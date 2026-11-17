@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Radar — pre-token protocols ranked by implied value</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-top">
+    <div>
+      <p class="kicker">Token launch radar &middot; model radar-2</p>
+      <h1>Token Radar</h1>
+      <p class="lede">Which protocols have no token yet, what a token would be worth if their record
+      stayed as it is, and how to farm each one before it issues one.</p>
+    </div>
+    <div class="asof">
+      <p class="asof-label">Snapshot</p>
+      <p class="asof-date" id="asof">—</p>
+      <p class="asof-src">DefiLlama public API, sealed input. The board reads this snapshot only.</p>
+    </div>
+  </div>
+  <dl class="stats" id="stats"></dl>
+  <p class="howto"><strong>How to read this board.</strong> Implied value is the entry&rsquo;s own claim,
+  never a prediction that a token will launch or when. A protocol &ldquo;records no token&rdquo; when
+  DefiLlama&rsquo;s record carries no market cap, CoinGecko id or symbol for it. Click any row for its
+  model breakdown and farm plan.</p>
+</header>
+
+<main>
+  <section class="model" aria-label="The value model">
+    <h2>The value model</h2>
+    <p class="formula">implied value = TVL &times; category multiple &times; growth &times; maturity &times; distribution</p>
+    <p>The category multiple is <strong>calibrated from this snapshot</strong>: the median market-cap/TVL
+    multiple of the live-token protocols in the same category (at least 3 comparables, else the
+    whole-snapshot median of <span id="overallMult">—</span>). Growth is the 7-day TVL change, clamped
+    to &minus;60&hellip;+120% and weighted by half. Maturity rises with how long the protocol has run
+    with no token, from 0.60 to 1.00 over three years. Distribution adds up to 10% for multi-chain reach.
+    No protocol name is ever special-cased: the same function scores every row.</p>
+    <details>
+      <summary>Calibration table — median mcap/TVL by category, from the snapshot&rsquo;s live protocols</summary>
+      <table class="calib" id="calib"></table>
+    </details>
+  </section>
+
+  <section class="controls" aria-label="Board controls">
+    <div class="tabs" role="tablist">
+      <button id="tabBoard" class="tab active" role="tab" aria-selected="true">Pre-token board</button>
+      <button id="tabLive" class="tab" role="tab" aria-selected="false">Live tokens &middot; already trading</button>
+    </div>
+    <div class="filters" id="filters">
+      <label>Search <input id="q" type="search" placeholder="name, slug or category" autocomplete="off"></label>
+      <label>Category <select id="cat"><option value="">All categories</option></select></label>
+      <label>Chain <select id="chain"><option value="">All chains</option></select></label>
+      <label>Sort <select id="sort">
+        <option value="implied">Implied value</option>
+        <option value="tvl">TVL</option>
+        <option value="growth">7-day growth</option>
+        <option value="age">Age</option>
+        <option value="name">Name</option>
+      </select></label>
+      <label class="check"><input id="watchOnly" type="checkbox"> Watchlist only</label>
+    </div>
+    <p class="count" id="count"></p>
+  </section>
+
+  <section id="boardView" aria-label="Ranked board">
+    <table class="board" id="board">
+      <thead><tr>
+        <th data-k="rank">#</th><th data-k="name">Protocol</th><th data-k="category">Category</th>
+        <th data-k="chains">Chains</th><th data-k="tvl" class="num">TVL</th>
+        <th data-k="growth" class="num">7d</th><th data-k="age" class="num">Age</th>
+        <th data-k="implied" class="num">Implied value</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+
+  <section id="liveView" class="hidden" aria-label="Live tokens">
+    <p class="live-note">These protocols already have a token that trades. They are shown at the
+    market&rsquo;s own value — market cap and the market&rsquo;s own mcap/TVL multiple — never mixed into
+    the ranked board. They are also the comparables the model calibrates from.</p>
+    <table class="board" id="liveTable">
+      <thead><tr>
+        <th>Protocol</th><th>Category</th><th>Chains</th>
+        <th class="num">TVL</th><th class="num">Market cap</th><th class="num">mcap/TVL</th>
+      </tr></thead>
+      <tbody id="liveRows"></tbody>
+    </table>
+  </section>
+
+  <section id="detail" class="detail hidden" aria-label="Protocol detail" tabindex="-1"></section>
+
+  <section class="method" aria-label="Method and limits">
+    <h2>Method &amp; limits</h2>
+    <ul>
+      <li>The board ranks <strong>183 protocols</strong>: all 40 on the snapshot&rsquo;s watchlist
+      (TVL &ge; $50M, no token recorded) plus 143 pre-token protocols below the floor, by TVL.</li>
+      <li>Bridges, liquid-staking and restaking receipts, versioned pools (<em>Name V2</em>) and
+      exchanges are not ranked: each is a product of a token that already trades, not a token that
+      does not exist yet. The snapshot&rsquo;s other protocols are the early ones the radar exists to find.</li>
+      <li>Farm plans are generated from each protocol&rsquo;s own record — category, main chain, TVL,
+      age — with the capital, gas and hold time the plan needs. They are a starting point, not
+      financial advice; never pay to claim an airdrop, and claim only from the protocol&rsquo;s own page.</li>
+      <li>Data: DefiLlama <span id="source">—</span>. Implied values are this entry&rsquo;s model output,
+      computed from the sealed snapshot alone.</li>
+    </ul>
+  </section>
+</main>
+
+<footer><p>Token Radar &middot; model radar-2 &middot; static page, no network, no tracking.</p></footer>
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
