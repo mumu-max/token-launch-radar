@@ -34,12 +34,15 @@
     <p class="formula">implied value = TVL &times; category multiple &times; growth &times; maturity &times; distribution</p>
     <p>The category multiple is <strong>calibrated from this snapshot</strong>: the median market-cap/TVL
     multiple of the live-token protocols in the same category (at least 3 comparables, else the
-    whole-snapshot median of <span id="overallMult">—</span>). Growth is the 7-day TVL change, clamped
-    to &minus;60&hellip;+120% and weighted by half. Maturity rises with how long the protocol has run
-    with no token, from 0.60 to 1.00 over three years. Distribution adds up to 10% for multi-chain reach.
-    No protocol name is ever special-cased: the same function scores every row.</p>
+    whole-snapshot median of <span id="overallMult">—</span>). The median is used because one outlier
+    protocol cannot move it; the table prints each category&rsquo;s interquartile range so the spread is
+    visible. Growth is the 7-day TVL change, clamped to &minus;60&hellip;+120% and weighted by half, so
+    it can move a value by at most &minus;30% to +60% — a one-week spike can never dominate the ranking.
+    Maturity rises with how long the protocol has run with no token, from 0.60 to 1.00 over three years.
+    Distribution adds up to 10% for multi-chain reach. No protocol name is ever special-cased: the same
+    function scores every row.</p>
     <details>
-      <summary>Calibration table — median mcap/TVL by category, from the snapshot&rsquo;s live protocols</summary>
+      <summary>Calibration table — median mcap/TVL by category, with interquartile range, from the snapshot&rsquo;s live protocols</summary>
       <table class="calib" id="calib"></table>
     </details>
   </section>
@@ -101,8 +104,19 @@
       exchanges are not ranked: each is a product of a token that already trades, not a token that
       does not exist yet. The snapshot&rsquo;s other protocols are the early ones the radar exists to find.</li>
       <li>Farm plans are generated from each protocol&rsquo;s own record — category, main chain, TVL,
-      age — with the capital, gas and hold time the plan needs. They are a starting point, not
+      age — with the capital, gas and hold time the plan needs. Every plan states what counts as a
+      qualifying action, an exit rule, and a risk check before claiming. They are a starting point, not
       financial advice; never pay to claim an airdrop, and claim only from the protocol&rsquo;s own page.</li>
+      <li>Reach counts chains only. It says where a protocol runs, not who holds its token — the
+      snapshot records no holder or governance data, so no concentration claim is made.</li>
+      <li>One watchlist protocol, USDD, is a stablecoin: its TVL is the outstanding supply, not
+      user-locked value in the DeFi sense. It stays on the board because the competition&rsquo;s
+      watchlist requires every slug to be covered; the ranking follows the house&rsquo;s list, not a claim
+      that USDD is a protocol awaiting a token.</li>
+      <li>Reviewed 2026-11-17 by Qwen3-14B on a Kaggle T4. The applicable points — the calibration
+      spread, the growth cap, the reach limit, the USDD note and risk-aware farm plans — are in this
+      revision. Points that need data the snapshot does not carry (holder concentration, 30/90-day
+      trends) are stated here as limits, not invented.</li>
       <li>Data: DefiLlama <span id="source">—</span>. Implied values are this entry&rsquo;s model output,
       computed from the sealed snapshot alone.</li>
     </ul>

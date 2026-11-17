@@ -8,7 +8,16 @@
 //    category (at least 3 live comparables, else the whole-snapshot median), and applies that. A
 //    lending protocol is priced like lending protocols trade, a DEX like DEXes trade. The multiples
 //    are computed from the snapshot at run time: no protocol name and no multiple is hardcoded, and
-//    the dashboard prints the calibration table so the reader can check it.
+//    the dashboard prints the calibration table so the reader can check it. The table also prints
+//    each category's interquartile range (p25–p75), because a median alone hides how wide a
+//    category's pricing is.
+//
+// Revised 2026-11-17 after a review by Qwen3-14B on a Kaggle T4: the review's applicable points
+// are in this revision — the calibration spread, the farm steps' qualification, risk and exit rules,
+// and the dashboard's USDD note. The formula is unchanged: growth stays linear and capped because
+// the snapshot carries only the 7-day change (no 30/90-day trend exists to use), and reach stays a
+// chain count because the snapshot records no holder or governance data. Both limits are stated on
+// the dashboard instead of filled in with invented data.
 //
 // 2. The board is honest about what is not a launch. A bridge, a liquid-staking receipt or a
 //    versioned pool (``Name V2``) is a product of a token that already trades, not a token that does
@@ -159,10 +168,12 @@ export interface LiveRow {
   multiple: number | null;
 }
 
-/** One calibrated multiple: the category, its median, and how many live protocols priced it. */
+/** One calibrated multiple: the category, its median, its interquartile range, and how many live protocols priced it. */
 export interface CalibrationRow {
   category: string;
   multiple: number;
+  p25: number;
+  p75: number;
   comps: number;
 }
 
@@ -178,6 +189,8 @@ export interface RadarData {
   early_size: number;
   live_size: number;
   overall_multiple: number;
+  overall_p25: number;
+  overall_p75: number;
   calibration: CalibrationRow[];
   rows: RadarRow[];
   live: LiveRow[];
@@ -203,6 +216,11 @@ function median(sorted: number[]): number {
   return sorted[Math.floor(sorted.length / 2)]!;
 }
 
+/** The q-quantile of a non-empty sorted array (q in [0, 1]). */
+function quantile(sorted: number[], q: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]!;
+}
+
 /** A whole day count from `from` to `to`, clamped at zero; null when either date is absent or bad. */
 export function ageDays(asOf: string, listedAt: string | null): number | null {
   if (listedAt === null) return null;
@@ -216,7 +234,7 @@ export function ageDays(asOf: string, listedAt: string | null): number | null {
  * The calibration: the median market-cap/TVL multiple of the snapshot's live-token protocols, per
  * category and overall. Computed from the data at run time; nothing here is a hardcoded multiple.
  */
-export function calibrate(snapshot: Snapshot, model: ModelConstants): { byCategory: Map<string, { multiple: number; comps: number }>; overall: number; table: CalibrationRow[] } {
+export function calibrate(snapshot: Snapshot, model: ModelConstants): { byCategory: Map<string, { multiple: number; comps: number }>; overall: number; overallP25: number; overallP75: number; table: CalibrationRow[] } {
   const byCategory = new Map<string, number[]>();
   const all: number[] = [];
   for (const p of snapshot.protocols) {
@@ -231,6 +249,8 @@ export function calibrate(snapshot: Snapshot, model: ModelConstants): { byCatego
   }
   all.sort((a, b) => a - b);
   const overall = Math.min(model.multiple_cap, Math.max(model.multiple_floor, median(all)));
+  const overallP25 = round4(Math.min(model.multiple_cap, Math.max(model.multiple_floor, quantile(all, 0.25))));
+  const overallP75 = round4(Math.min(model.multiple_cap, Math.max(model.multiple_floor, quantile(all, 0.75))));
   const out = new Map<string, { multiple: number; comps: number }>();
   const table: CalibrationRow[] = [];
   for (const [c, list] of [...byCategory.entries()].sort((a, b) => b[1].length - a[1].length)) {
@@ -238,9 +258,9 @@ export function calibrate(snapshot: Snapshot, model: ModelConstants): { byCatego
     if (list.length < model.min_category_comps) continue;
     const m = Math.min(model.multiple_cap, Math.max(model.multiple_floor, median(list)));
     out.set(c, { multiple: m, comps: list.length });
-    table.push({ category: c, multiple: round4(m), comps: list.length });
+    table.push({ category: c, multiple: round4(m), p25: round4(quantile(list, 0.25)), p75: round4(quantile(list, 0.75)), comps: list.length });
   }
-  return { byCategory: out, overall, table };
+  return { byCategory: out, overall, overallP25, overallP75, table };
 }
 
 /** The three multipliers and the implied value one protocol gets under `model`. */
@@ -383,7 +403,8 @@ function holdDaysFor(age: number | null): number {
 function actionFor(p: SnapshotProtocol, capital: number, chain: string): string {
   const c = (p.category ?? '').toLowerCase();
   const name = p.name;
-  if (c.includes('lend') || c.includes('cdp') || c.includes('collateral')) return `Supply $${capital} of USDC to ${name} on ${chain} and keep the position open.`;
+  if (c.includes('cdp') || c.includes('collateral')) return `Deposit $${capital} of collateral on ${name} on ${chain} and mint its stable asset, keeping the position open.`;
+  if (c.includes('lend')) return `Supply $${capital} of USDC to ${name} on ${chain} and keep the position open.`;
   if (c.includes('dex') || c.includes('leveraged farm')) return `Provide $${capital} of liquidity to ${name}'s main pool on ${chain} and keep the position open.`;
   if (c.includes('perpetual') || c.includes('derivative') || c.includes('basis trading')) return `Deposit $${capital} of USDC as margin on ${name} and open one small hedge.`;
   if (c.includes('yield aggregator') || c.includes('curator') || c.includes('allocator') || c.includes('risk curators') || c.includes('onchain capital')) return `Deposit $${capital} into a ${name} vault on ${chain} and keep the shares.`;
@@ -431,22 +452,22 @@ export function farmSteps(p: SnapshotProtocol, age: number | null): FarmStep[] {
       time: '15 minutes to set up',
     },
     {
-      text: weeklyFor(p),
+      text: `${weeklyFor(p)} A qualifying action is one on-chain transaction that succeeds and shows as confirmed in a block explorer.`,
       cost: `${gas} a week`,
       time: '10 minutes a week',
     },
     {
-      text: `Hold the position for at least ${hold} days so the activity is counted in more than one snapshot.`,
+      text: `Hold the position for at least ${hold} days so the activity is counted in more than one snapshot. Exit rule: if the protocol's TVL falls by half or its contracts are exploited, withdraw first and stop farming it.`,
       cost: `the $${capital} stays in the position`,
       time: `${hold} days`,
     },
     {
-      text: `Before you withdraw, open the protocol's own points or rewards page and claim only from the link it publishes.`,
+      text: `Before you withdraw, open the protocol's own points or rewards page and claim only from the link it publishes. Check the protocol's own security or audit page first; never pay to claim, and never sign a transaction you do not understand.`,
       cost: 'no fee to check, and never pay to claim',
       time: '10 minutes',
     },
     {
-      text: `Write the wallet, the dates and every transaction in a farm log so you can repeat the position or unwind it.`,
+      text: `Write the date, action, chain, amount, gas paid and result of every transaction in a farm log, so you can repeat the position or unwind it.`,
       cost: 'nothing but the log',
       time: '5 minutes',
     },
@@ -510,6 +531,8 @@ export function buildRadar(snapshot: Snapshot, model: ModelConstants = MODEL): {
     early_size: early,
     live_size: live.length,
     overall_multiple: round4(calibration.overall),
+    overall_p25: calibration.overallP25,
+    overall_p75: calibration.overallP75,
     calibration: calibration.table,
     rows: board.map((r) => ({ ...radarRow(r), watchlist: snapshot.watchlist.includes(r.slug) })),
     live,

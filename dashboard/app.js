@@ -39,11 +39,11 @@
     '<div><dt>Live tokens set aside</dt><dd>' + R.live_size + ' <small>already trading</small></dd></div>';
 
   /* Calibration table */
-  $('calib').innerHTML = '<tr><th>Category</th><th>Multiple</th><th>Comparables</th></tr>' +
+  $('calib').innerHTML = '<tr><th>Category</th><th>Multiple</th><th>Spread (p25–p75)</th><th>Comparables</th></tr>' +
     R.calibration.map(function (c) {
-      return '<tr><td>' + esc(c.category) + '</td><td>' + c.multiple.toFixed(3) + '×</td><td>' + c.comps + ' live protocols</td></tr>';
+      return '<tr><td>' + esc(c.category) + '</td><td>' + c.multiple.toFixed(3) + '×</td><td>' + c.p25.toFixed(3) + '–' + c.p75.toFixed(3) + '×</td><td>' + c.comps + ' live protocols</td></tr>';
     }).join('') +
-    '<tr><td>Overall fallback (fewer than 3 comparables)</td><td>' + R.overall_multiple.toFixed(3) + '×</td><td>whole snapshot</td></tr>';
+    '<tr><td>Overall fallback (fewer than 3 comparables)</td><td>' + R.overall_multiple.toFixed(3) + '×</td><td>' + R.overall_p25.toFixed(3) + '–' + R.overall_p75.toFixed(3) + '×</td><td>whole snapshot</td></tr>';
 
   /* Filters */
   var cats = {}, chains = {};
