@@ -34,8 +34,8 @@
   $('stats').innerHTML =
     '<div><dt>Protocols scanned</dt><dd>' + rows.length + ' <small>ranked</small></dd></div>' +
     '<div><dt>Watchlist</dt><dd>' + R.watchlist_size + ' <small>covered</small></dd></div>' +
-    '<div><dt>Early finds</dt><dd>' + R.early_size + ' <small>below the $50M floor</small></dd></div>' +
-    '<div><dt>Top implied value</dt><dd>' + money(top.implied_value_usd) + ' <small>' + esc(top.name) + '</small></dd></div>' +
+    '<div class="cool"><dt>Early finds</dt><dd>' + R.early_size + ' <small>below the $50M floor</small></dd></div>' +
+    '<div class="hot"><dt>Top implied value</dt><dd>' + money(top.implied_value_usd) + ' <small>' + esc(top.name) + '</small></dd></div>' +
     '<div><dt>Live tokens set aside</dt><dd>' + R.live_size + ' <small>already trading</small></dd></div>';
 
   /* Calibration table */
@@ -95,7 +95,7 @@
         '<td class="num">' + pct(r.change_7d) + '</td>' +
         '<td class="num">' + age(r.age_days) + '</td>' +
         '<td class="num"><span class="implied">' + money(r.implied_value_usd) +
-        '<span class="bar"><i style="width:' + w + '%"></i></span></span></td></tr>';
+        '<span class="bar" title="' + w + '% of the top implied value"><i style="width:' + w + '%"></i></span></span></td></tr>';
     }).join('');
     $('count').textContent = list.length + ' of ' + rows.length + ' ranked protocols' +
       (state.watchOnly ? ' · watchlist only' : '') + (state.cat ? ' · ' + state.cat : '') +
@@ -141,7 +141,16 @@
       '×), times distribution ×' + r.distribution_multiplier.toFixed(2) + ' for ' + r.chains.length + ' chain' +
       (r.chains.length === 1 ? '' : 's') + '. Base × growth × maturity = implied value. The implied value is this entry&rsquo;s model output, not a price target.</p>' +
       '<div class="farm"><h4>Farm plan — six steps</h4><ol>' +
-      r.farm_steps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') +
+      r.farm_steps.map(function (s) {
+        var ci = s.lastIndexOf(' Cost: '), ti = s.lastIndexOf(' Time: ');
+        if (ci > 0 && ti > ci) {
+          var cost = s.slice(ci + 7, ti);
+          if (cost.slice(-1) === '.') cost = cost.slice(0, -1);
+          return '<li>' + esc(s.slice(0, ci)) + '<div class="meta">Cost: ' + esc(cost) +
+            ' &middot; Time: ' + esc(s.slice(ti + 7)) + '</div></li>';
+        }
+        return '<li>' + esc(s) + '</li>';
+      }).join('') +
       '</ol></div>';
     d.classList.remove('hidden');
     $('dclose').onclick = function () { state.detail = null; renderBoard(); renderDetail(); };
